@@ -490,7 +490,7 @@ fn find_block_start_up(lines: &[&str], anchor: usize, base_indent: usize) -> usi
             continue;
         }
         let indent = line_indent(line);
-        if indent <= base_indent {
+        if indent < base_indent {
             return prev + 1;
         }
         idx = prev;
@@ -507,7 +507,7 @@ fn find_block_end_down(lines: &[&str], anchor: usize, base_indent: usize) -> usi
             continue;
         }
         let indent = line_indent(line);
-        if indent <= base_indent {
+        if indent < base_indent {
             return idx.saturating_sub(1);
         }
         idx += 1;

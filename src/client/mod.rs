@@ -44,8 +44,16 @@ impl OpenAIClient {
         }
 
         let body = response.text().await?;
-        let value = serde_json::from_str::<serde_json::Value>(&body)
-            .with_context(|| format!("Failed to parse response body: {}", body))?;
+        let value = match serde_json::from_str::<serde_json::Value>(&body) {
+            Ok(value) => value,
+            Err(err) if err.is_eof() => {
+                anyhow::bail!("Failed to parse response body (truncated response): {}", body)
+            }
+            Err(err) => {
+                return Err(err)
+                    .with_context(|| format!("Failed to parse response body: {}", body));
+            }
+        };
 
         if let Some(error) = value.get("error") {
             if let Ok(formatted) = serde_json::to_string_pretty(error) {
@@ -302,5 +310,116 @@ mod tests {
         assert!(result.is_err());
         let error_message = result.unwrap_err().to_string();
         assert!(error_message.contains("401"));
+    }
+
+    #[tokio::test]
+    async fn test_empty_body_returns_parse_error() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("\n\n\n"))
+            .mount(&mock_server)
+            .await;
+
+        let client = OpenAIClient::new("test-api-key".to_string()).with_base_url(mock_server.uri());
+
+        let request = ChatRequest {
+            model: "gpt-4".to_string(),
+            messages: vec![Message {
+                role: "user".to_string(),
+                content: Some("Hello!".to_string()),
+                tool_calls: None,
+                tool_call_id: None,
+            }],
+            response_format: None,
+            tools: None,
+            tool_choice: None,
+            temperature: None,
+            max_tokens: None,
+            reasoning_effort: None,
+        };
+
+        let result = client.chat(request).await;
+        assert!(result.is_err());
+        let error_message = result.unwrap_err().to_string();
+        assert!(error_message.contains("Failed to parse response body"));
+    }
+
+    #[tokio::test]
+    async fn test_body_with_error_field_is_reported() {
+        let mock_server = MockServer::start().await;
+
+        let mock_error = serde_json::json!({
+            "error": {
+                "message": "Upstream failure",
+                "type": "server_error"
+            }
+        });
+
+        Mock::given(method("POST"))
+            .and(path("/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(mock_error))
+            .mount(&mock_server)
+            .await;
+
+        let client = OpenAIClient::new("test-api-key".to_string()).with_base_url(mock_server.uri());
+
+        let request = ChatRequest {
+            model: "gpt-4".to_string(),
+            messages: vec![Message {
+                role: "user".to_string(),
+                content: Some("Hello!".to_string()),
+                tool_calls: None,
+                tool_call_id: None,
+            }],
+            response_format: None,
+            tools: None,
+            tool_choice: None,
+            temperature: None,
+            max_tokens: None,
+            reasoning_effort: None,
+        };
+
+        let result = client.chat(request).await;
+        assert!(result.is_err());
+        let error_message = result.unwrap_err().to_string();
+        assert!(error_message.contains("Upstream failure"));
+    }
+
+    #[tokio::test]
+    async fn test_truncated_body_reports_truncated_response() {
+        let mock_server = MockServer::start().await;
+
+        let truncated_body = "{\"id\":\"chatcmpl-1\",\"object\":\"chat.completion\",\"created\":0,\"model\":\"gpt-4\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"tool_calls\":[";
+
+        Mock::given(method("POST"))
+            .and(path("/chat/completions"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(truncated_body))
+            .mount(&mock_server)
+            .await;
+
+        let client = OpenAIClient::new("test-api-key".to_string()).with_base_url(mock_server.uri());
+
+        let request = ChatRequest {
+            model: "gpt-4".to_string(),
+            messages: vec![Message {
+                role: "user".to_string(),
+                content: Some("Hello!".to_string()),
+                tool_calls: None,
+                tool_call_id: None,
+            }],
+            response_format: None,
+            tools: None,
+            tool_choice: None,
+            temperature: None,
+            max_tokens: None,
+            reasoning_effort: None,
+        };
+
+        let result = client.chat(request).await;
+        assert!(result.is_err());
+        let error_message = result.unwrap_err().to_string();
+        assert!(error_message.contains("truncated response"));
     }
 }

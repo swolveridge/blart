@@ -95,9 +95,13 @@ mod tests {
             model: "gpt-4".to_string(),
             messages: vec![Message {
                 role: "user".to_string(),
-                content: "Hello!".to_string(),
+                content: Some("Hello!".to_string()),
+                tool_calls: None,
+                tool_call_id: None,
             }],
             response_format: None,
+            tools: None,
+            tool_choice: None,
             temperature: None,
             max_tokens: None,
             reasoning_effort: None,
@@ -111,8 +115,8 @@ mod tests {
         assert_eq!(response.model, "gpt-4");
         assert_eq!(response.choices.len(), 1);
         assert_eq!(
-            response.choices[0].message.content,
-            "Hello! How can I help you today?"
+            response.choices[0].message.content.as_deref(),
+            Some("Hello! How can I help you today?")
         );
         assert_eq!(response.choices[0].finish_reason, "stop");
         assert_eq!(response.usage.total_tokens, 21);
@@ -174,12 +178,16 @@ mod tests {
             model: "gpt-4".to_string(),
             messages: vec![Message {
                 role: "user".to_string(),
-                content: "Tell me about a person".to_string(),
+                content: Some("Tell me about a person".to_string()),
+                tool_calls: None,
+                tool_call_id: None,
             }],
             response_format: Some(ResponseFormat {
                 format_type: "json_schema".to_string(),
                 json_schema: Some(json_schema),
             }),
+            tools: None,
+            tool_choice: None,
             temperature: Some(0.7),
             max_tokens: Some(100),
             reasoning_effort: None,
@@ -193,8 +201,8 @@ mod tests {
         assert_eq!(response.model, "gpt-4");
         assert_eq!(response.choices.len(), 1);
         assert_eq!(
-            response.choices[0].message.content,
-            "{\"name\":\"John Doe\",\"age\":30,\"city\":\"New York\"}"
+            response.choices[0].message.content.as_deref(),
+            Some("{\"name\":\"John Doe\",\"age\":30,\"city\":\"New York\"}")
         );
         assert_eq!(response.choices[0].finish_reason, "stop");
         assert_eq!(response.usage.total_tokens, 35);
@@ -229,9 +237,13 @@ mod tests {
             model: "gpt-4".to_string(),
             messages: vec![Message {
                 role: "user".to_string(),
-                content: "Hello!".to_string(),
+                content: Some("Hello!".to_string()),
+                tool_calls: None,
+                tool_call_id: None,
             }],
             response_format: None,
+            tools: None,
+            tool_choice: None,
             temperature: None,
             max_tokens: None,
             reasoning_effort: None,

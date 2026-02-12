@@ -12,3 +12,7 @@ anyhow = "1"
 clap = { version = "4.5.57", features = ["derive"] }
 proptest = "1.10.0"
 wiremock = "0.6.5"
+regex = "1.11.1"
+walkdir = "2.5.0"
+globset = "0.4.15"
+tempfile = "3.12.0"

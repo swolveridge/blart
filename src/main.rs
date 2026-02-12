@@ -148,6 +148,7 @@ async fn run_review(args: ReviewArgs) -> Result<()> {
         messages.push(assistant_message.clone());
 
         if let Some(tool_calls) = tool_calls {
+            println!("Actioning {} tool call(s)", tool_calls.len());
             for call in tool_calls {
                 tool_calls_used += 1;
                 if tool_calls_used > MAX_TOOL_CALLS {

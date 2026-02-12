@@ -12,7 +12,7 @@ use git::get_git_data;
 use prompt::{create_user_prompt, get_system_prompt};
 use tools::tool_definitions;
 
-const DEFAULT_MODEL: &str = "gpt-5.2-2025-12-11";
+const DEFAULT_MODEL: &str = "openai/gpt-5.2";
 const MAX_TOOL_CALLS: usize = 8;
 
 #[derive(Parser, Debug)]
@@ -175,7 +175,12 @@ async fn run_review(args: ReviewArgs) -> Result<()> {
             continue;
         }
 
-        let content = assistant_message.content.unwrap_or_default();
+        let content = assistant_message.content.unwrap_or("<no content>".to_string());
+        if content.trim().is_empty() || content == "<no content>" {
+            return Err(anyhow!(
+                "Model returned an empty response with no tool calls."
+            ));
+        }
         println!("{}", content.trim());
         break;
     }

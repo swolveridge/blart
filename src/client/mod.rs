@@ -1,6 +1,6 @@
 pub mod dto;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use dto::{ChatRequest, ChatResponse};
 #[cfg(test)]
 use dto::{JsonSchema, Message, ResponseFormat};
@@ -43,7 +43,55 @@ impl OpenAIClient {
             anyhow::bail!("OpenAI API error ({}): {}", status, error_text);
         }
 
-        let chat_response = response.json::<ChatResponse>().await?;
+        let body = response.text().await?;
+        let value = serde_json::from_str::<serde_json::Value>(&body)
+            .with_context(|| format!("Failed to parse response body: {}", body))?;
+
+        if let Some(error) = value.get("error") {
+            if let Ok(formatted) = serde_json::to_string_pretty(error) {
+                anyhow::bail!("OpenAI API error: {}", formatted);
+            }
+            anyhow::bail!("OpenAI API error: {}", error);
+        }
+
+        if let Some(choices) = value.get("choices").and_then(|c| c.as_array()) {
+            if let Some(choice) = choices.first() {
+                let finish_reason = choice.get("finish_reason").and_then(|v| v.as_str());
+                let content = choice.get("message").and_then(|m| m.get("content"));
+                let tool_calls = choice.get("message").and_then(|m| m.get("tool_calls"));
+                let has_content = content.is_some_and(|v| !v.is_null());
+                let has_tool_calls = tool_calls.is_some_and(|v| !v.is_null());
+
+                if finish_reason == Some("error") || (!has_content && !has_tool_calls) {
+                    if let Some(choice_error) = choice.get("error").or_else(|| {
+                        choice
+                            .get("message")
+                            .and_then(|message| message.get("error"))
+                    }) {
+                        if let Ok(formatted) = serde_json::to_string_pretty(choice_error) {
+                            anyhow::bail!("OpenAI API error: {}", formatted);
+                        }
+                        anyhow::bail!("OpenAI API error: {}", choice_error);
+                    }
+
+                    if let Ok(formatted) = serde_json::to_string_pretty(choice) {
+                        anyhow::bail!(
+                            "OpenAI API error: finish_reason={} response={}",
+                            finish_reason.unwrap_or("unknown"),
+                            formatted
+                        );
+                    }
+                }
+            }
+        }
+
+        let chat_response = serde_json::from_value::<ChatResponse>(value)
+            .with_context(|| format!("Failed to parse chat response: {}", body))?;
+
+        if chat_response.choices.is_empty() {
+            anyhow::bail!("OpenAI API error: empty choices array");
+        }
+
         Ok(chat_response)
     }
 }

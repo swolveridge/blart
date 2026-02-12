@@ -156,10 +156,14 @@ async fn run_review(args: ReviewArgs) -> Result<()> {
                     ));
                 }
 
-                let tool_output = tools::handle_tool_call(
+                let summary = tools::summarize_tool_call(
                     &call.function.name,
                     &call.function.arguments,
                 );
+                println!("Tool call: {}", summary);
+
+                let tool_output =
+                    tools::handle_tool_call(&call.function.name, &call.function.arguments);
 
                 messages.push(Message {
                     role: "tool".to_string(),

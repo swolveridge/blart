@@ -1,0 +1,18 @@
+read_file
+Read a file and return its contents with line numbers for diffing or discussion. IMPORTANT: This tool reads exactly one file per call. If you need multiple files, issue multiple parallel read_file calls. Supports two modes: 'slice' (default) reads lines sequentially with offset/limit; 'indentation' extracts complete semantic code blocks around an anchor line based on indentation hierarchy. Slice mode is ideal for initial file exploration, understanding overall structure, reading configuration/data files, or when you need a specific line range. Use it when you don't have a target line number. PREFER indentation mode when you have a specific line number from search results, error messages, or definition lookups - it guarantees complete, syntactically valid code blocks without mid-function truncation. IMPORTANT: Indentation mode requires anchor_line to be useful. Without it, only header content (imports) is returned. By default, returns up to 2000 lines per file. Lines longer than 2000 characters are truncated. Supports text extraction from PDF and DOCX files, but may not handle other binary files properly. Example: { path: 'src/app.ts' } Example (indentation mode): { path: 'src/app.ts', mode: 'indentation', indentation: { anchor_line: 42 } }
+
+search_files
+Request to perform a regex search across files in a specified directory, providing context-rich results. This tool searches for patterns or specific content across multiple files, displaying each match with encapsulating context.
+
+Craft your regex patterns carefully to balance specificity and flexibility. Use this tool to find code patterns, TODO comments, function definitions, or any text-based information across the project. The results include surrounding context, so analyze the surrounding code to better understand the matches. Leverage this tool in combination with other tools for more comprehensive analysis.
+
+Parameters:
+- path: (required) The path of the directory to search in (relative to the current workspace directory). This directory will be recursively searched.
+- regex: (required) The regular expression pattern to search for. Uses Rust regex syntax.
+- file_pattern: (optional) Glob pattern to filter files (e.g., '*.ts' for TypeScript files). If not provided, it will search all files (*).
+
+Example: Searching for all .ts files in the current directory
+{ "path": ".", "regex": ".*", "file_pattern": "*.ts" }
+
+Example: Searching for function definitions in JavaScript files
+{ "path": "src", "regex": "function\\s+\\w+", "file_pattern": "*.js" }

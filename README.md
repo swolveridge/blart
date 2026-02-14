@@ -7,16 +7,10 @@ A minimal Rust CLI for AI-powered code review. It sends your git diff to an LLM 
 **blart** reviews code changes by:
 1. Computing a diff against your merge base (e.g., `main`)
 2. Sending the diff and touched file list to an LLM (via OpenAI-compatible APIs)
-3. Allowing the model to call `read_file` and `search_files` tools to inspect the code it needs to have enough context for a thorough review
-4. Returning a JSON response with a summary of any substantive issues, and reasoning for them
+3. Allowing the model to call `read_file` and `search_files` tools to inspect the code - this allows it to query for enough context to give a thorough review
+4. Returning a JSON response with any substantive issues, and reasoning for its review
 
 The system prompt instructs the model to focus on issues a human reviewer would catch but a compiler might miss—such as off-by-one errors, incorrect library usage, or contradictions between code and documentation.
-
-## Installation
-
-```bash
-cargo install --path .
-```
 
 ## Usage
 
